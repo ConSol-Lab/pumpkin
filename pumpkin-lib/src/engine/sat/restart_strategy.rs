@@ -8,6 +8,7 @@ use crate::basic_types::sequence_generators::GeometricSequence;
 use crate::basic_types::sequence_generators::LubySequence;
 use crate::basic_types::sequence_generators::SequenceGenerator;
 use crate::basic_types::sequence_generators::SequenceGeneratorType;
+use crate::pumpkin_assert_simple;
 
 /// The options which are used by the solver to determine when a restart should occur.
 ///
@@ -45,6 +46,8 @@ use crate::basic_types::sequence_generators::SequenceGeneratorType;
 /// Information Processing Letters, vol. 47, no. 4, pp. 173–180, 1993.
 #[derive(Debug, Clone, Copy)]
 pub struct RestartOptions {
+    /// Indicates whether restarts should never occur.
+    pub no_restarts: bool,
     /// Decides the sequence based on which the restarts are performed.
     /// To be used in combination with [`RestartOptions::base_interval`]
     pub sequence_generator_type: SequenceGeneratorType,
@@ -81,6 +84,7 @@ impl Default for RestartOptions {
     fn default() -> Self {
         // The values which are used are based on [Glucose](https://github.com/audemard/glucose).
         Self {
+            no_restarts: false,
             sequence_generator_type: SequenceGeneratorType::Constant,
             base_interval: 50,
             min_num_conflicts_before_first_restart: 10000,
@@ -94,6 +98,8 @@ impl Default for RestartOptions {
 
 #[derive(Debug)]
 pub(crate) struct RestartStrategy {
+    /// Indicates whether restarts should never occur.
+    no_restarts: bool,
     /// A generator for determining how many conflicts should be found before the next restart is
     /// able to take place (one example of such a generator is [`LubySequence`]).
     sequence_generator: Box<dyn SequenceGenerator>,
@@ -153,6 +159,7 @@ impl RestartStrategy {
         let number_of_conflicts_until_restart = sequence_generator.next().try_into().expect("Expected restart generator to generate a positive value but it generated a negative one");
 
         RestartStrategy {
+            no_restarts: options.no_restarts,
             sequence_generator,
             number_of_conflicts_encountered_since_restart: 0,
             number_of_conflicts_until_restart,
@@ -172,6 +179,14 @@ impl RestartStrategy {
         }
     }
 
+    pub(crate) fn turn_off_restarts(&mut self) {
+        self.no_restarts = true;
+    }
+
+    pub(crate) fn turn_on_restarts(&mut self) {
+        self.no_restarts = false;
+    }
+
     /// Determines whether the restart strategy indicates that a restart should take place; the
     /// strategy considers three conditions (in this order):
     /// - If no restarts have taken place yet then a restart can only take place if the number of
@@ -187,6 +202,10 @@ impl RestartStrategy {
     ///   "bad" clauses based on the LBD; if it is learning "sufficiently bad" clauses then a
     ///   restart will be performed.
     pub(crate) fn should_restart(&self) -> bool {
+        if self.no_restarts {
+            // Restarts are currently turned off
+            return false;
+        }
         // Do not restart until a certain number of conflicts take place before the first restart
         // this is done to collect some early runtime statistics for the restart strategy
         if self.number_of_restarts == 0
@@ -212,6 +231,10 @@ impl RestartStrategy {
     /// internal values, this method has the additional responsibility of checking whether a restart
     /// should be blocked based on whether the solver is "sufficiently close" to finding a solution.
     pub(crate) fn notify_conflict(&mut self, lbd: u32, num_literals_on_trail: usize) {
+        if self.no_restarts {
+            // Restarts are currently turned off, we do not track anything
+            return;
+        }
         // Update moving averages
         self.number_of_assigned_variables_moving_average
             .add_term(num_literals_on_trail as u64);
@@ -242,6 +265,7 @@ impl RestartStrategy {
     /// Notifies the restart strategy that a restart has taken place so that it can adjust its
     /// internal values
     pub(crate) fn notify_restart(&mut self) {
+        pumpkin_assert_simple!(!self.no_restarts);
         self.number_of_restarts += 1;
         self.reset_values()
     }
@@ -249,6 +273,7 @@ impl RestartStrategy {
     /// Resets the values related to determining whether a restart takes place; this method should
     /// be called whenever a restart has taken place or should have taken place and was blocked.
     fn reset_values(&mut self) {
+        pumpkin_assert_simple!(!self.no_restarts);
         self.number_of_conflicts_until_restart =
             self.sequence_generator.next().try_into().expect("Expected restart generator to generate a positive value but it generated a negative one");
         self.number_of_conflicts_encountered_since_restart = 0;

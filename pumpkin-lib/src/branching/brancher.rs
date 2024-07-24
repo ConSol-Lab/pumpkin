@@ -68,4 +68,7 @@ pub trait Brancher {
 
     /// This method is called whenever a restart is performed.
     fn on_restart(&mut self) {}
+
+    /// This method returns whether the [`Brancher`] is static throughout the search process.
+    fn is_static(&self) -> bool;
 }

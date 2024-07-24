@@ -16,6 +16,10 @@ impl ValueSelector<DomainId> for OutDomainMin {
     ) -> Predicate {
         predicate!(decision_variable >= context.lower_bound(decision_variable) + 1)
     }
+
+    fn is_static(&self) -> bool {
+        true
+    }
 }
 
 #[cfg(test)]

@@ -341,6 +341,12 @@ struct Args {
         verbatim_doc_comment
     )]
     cumulative_allow_holes: bool,
+
+    /// Indicates that the solver should never use restarts.
+    ///
+    /// Possible values: bool
+    #[arg(long = "no-restarts", default_value_t = false, verbatim_doc_comment)]
+    no_restarts: bool,
 }
 
 fn configure_logging(
@@ -479,6 +485,7 @@ fn run() -> PumpkinResult<()> {
 
     let solver_options = SolverOptions {
         restart_options: RestartOptions {
+            no_restarts: args.no_restarts,
             sequence_generator_type: args.restart_sequence_generator_type,
             base_interval: args.restart_base_interval,
             min_num_conflicts_before_first_restart: args

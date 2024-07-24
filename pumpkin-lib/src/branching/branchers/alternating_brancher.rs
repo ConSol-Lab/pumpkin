@@ -143,6 +143,10 @@ impl<OtherBrancher: Brancher> Brancher for AlternatingBrancher<OtherBrancher> {
             self.toggle_brancher()
         }
     }
+
+    fn is_static(&self) -> bool {
+        self.default_brancher.is_static() && self.other_brancher.is_static()
+    }
 }
 
 #[cfg(test)]

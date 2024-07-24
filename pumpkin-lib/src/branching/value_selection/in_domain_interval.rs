@@ -35,6 +35,10 @@ impl ValueSelector<DomainId> for InDomainInterval {
             InDomainSplit::get_predicate_excluding_upper_half(context, decision_variable)
         }
     }
+
+    fn is_static(&self) -> bool {
+        true
+    }
 }
 
 #[cfg(test)]

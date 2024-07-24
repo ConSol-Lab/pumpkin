@@ -269,6 +269,10 @@ impl Brancher for DummyBrancher {
     fn next_decision(&mut self, _: &mut SelectionContext) -> Option<Predicate> {
         None
     }
+
+    fn is_static(&self) -> bool {
+        true
+    }
 }
 
 #[cfg(test)]

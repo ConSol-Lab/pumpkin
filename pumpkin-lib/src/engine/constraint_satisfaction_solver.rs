@@ -950,6 +950,13 @@ impl ConstraintSatisfactionSolver {
         termination: &mut impl TerminationCondition,
         brancher: &mut impl Brancher,
     ) -> CSPSolverExecutionFlag {
+        // If the search strategy is static then restarts will not do anything
+        if brancher.is_static() {
+            self.restart_strategy.turn_off_restarts();
+        } else {
+            self.restart_strategy.turn_on_restarts();
+        }
+
         loop {
             if termination.should_stop() {
                 self.state.declare_timeout();

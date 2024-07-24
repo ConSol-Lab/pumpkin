@@ -21,6 +21,10 @@ impl<Var: IntegerVariable + Copy> ValueSelector<Var> for InDomainMedian {
             .collect::<Vec<_>>();
         predicate!(decision_variable == values_in_domain[values_in_domain.len() / 2])
     }
+
+    fn is_static(&self) -> bool {
+        true
+    }
 }
 
 #[cfg(test)]

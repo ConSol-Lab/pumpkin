@@ -45,6 +45,10 @@ impl<Var: IntegerVariable + Copy> ValueSelector<Var> for InDomainMiddle {
         }
         unreachable!("There should be at least 1 selectable variable in the domain");
     }
+
+    fn is_static(&self) -> bool {
+        true
+    }
 }
 
 #[cfg(test)]

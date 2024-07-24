@@ -18,6 +18,10 @@ impl<Var: IntegerVariable + Copy> ValueSelector<Var> for InDomainMax {
     ) -> Predicate {
         predicate!(decision_variable >= context.upper_bound(decision_variable))
     }
+
+    fn is_static(&self) -> bool {
+        true
+    }
 }
 
 impl ValueSelector<PropositionalVariable> for InDomainMax {
@@ -27,6 +31,10 @@ impl ValueSelector<PropositionalVariable> for InDomainMax {
         decision_variable: PropositionalVariable,
     ) -> Predicate {
         Literal::new(decision_variable, true).into()
+    }
+
+    fn is_static(&self) -> bool {
+        true
     }
 }
 

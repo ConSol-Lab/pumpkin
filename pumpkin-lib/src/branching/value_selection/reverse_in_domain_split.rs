@@ -32,6 +32,10 @@ impl<Var: IntegerVariable + Copy> ValueSelector<Var> for ReverseInDomainSplit {
         );
         predicate!(decision_variable >= bound)
     }
+
+    fn is_static(&self) -> bool {
+        true
+    }
 }
 
 #[cfg(test)]

@@ -21,6 +21,10 @@ impl<Var: IntegerVariable + Copy> ValueSelector<Var> for InDomainSplit {
     ) -> Predicate {
         InDomainSplit::get_predicate_excluding_upper_half(context, decision_variable)
     }
+
+    fn is_static(&self) -> bool {
+        true
+    }
 }
 
 impl InDomainSplit {

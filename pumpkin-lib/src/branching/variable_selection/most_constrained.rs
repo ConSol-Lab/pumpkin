@@ -87,6 +87,10 @@ where
 
         self.tie_breaker.select()
     }
+
+    fn is_static(&self) -> bool {
+        true
+    }
 }
 
 #[cfg(test)]

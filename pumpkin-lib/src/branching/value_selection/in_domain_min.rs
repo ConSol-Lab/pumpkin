@@ -18,6 +18,10 @@ impl<Var: IntegerVariable + Copy> ValueSelector<Var> for InDomainMin {
     ) -> Predicate {
         predicate!(decision_variable <= context.lower_bound(decision_variable))
     }
+
+    fn is_static(&self) -> bool {
+        true
+    }
 }
 
 impl ValueSelector<PropositionalVariable> for InDomainMin {
@@ -27,6 +31,10 @@ impl ValueSelector<PropositionalVariable> for InDomainMin {
         decision_variable: PropositionalVariable,
     ) -> Predicate {
         Literal::new(decision_variable, false).into()
+    }
+
+    fn is_static(&self) -> bool {
+        true
     }
 }
 

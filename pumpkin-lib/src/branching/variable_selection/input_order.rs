@@ -30,6 +30,10 @@ impl VariableSelector<DomainId> for InputOrder<DomainId> {
             .find(|variable| !context.is_integer_fixed(**variable))
             .copied()
     }
+
+    fn is_static(&self) -> bool {
+        true
+    }
 }
 
 impl VariableSelector<PropositionalVariable> for InputOrder<PropositionalVariable> {
@@ -38,6 +42,10 @@ impl VariableSelector<PropositionalVariable> for InputOrder<PropositionalVariabl
             .iter()
             .find(|variable| !context.is_propositional_variable_fixed(**variable))
             .copied()
+    }
+
+    fn is_static(&self) -> bool {
+        true
     }
 }
 

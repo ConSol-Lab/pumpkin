@@ -32,4 +32,7 @@ pub trait ValueSelector<Var> {
     /// the case of a satisfiable problem or on solutions of increasing quality when solving an
     /// optimisation problem.
     fn on_solution(&mut self, _solution: SolutionReference) {}
+
+    /// This method returns whether the [`ValueSelector`] is static throughout the search process.
+    fn is_static(&self) -> bool;
 }

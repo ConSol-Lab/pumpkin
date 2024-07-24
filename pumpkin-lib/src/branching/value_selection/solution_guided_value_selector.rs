@@ -119,6 +119,10 @@ where
         }
         self.backup_selector.on_solution(solution)
     }
+
+    fn is_static(&self) -> bool {
+        false
+    }
 }
 
 #[cfg(test)]

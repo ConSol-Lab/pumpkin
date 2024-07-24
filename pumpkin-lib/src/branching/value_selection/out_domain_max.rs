@@ -16,6 +16,10 @@ impl ValueSelector<DomainId> for OutDomainMax {
     ) -> Predicate {
         predicate!(decision_variable <= context.upper_bound(decision_variable) - 1)
     }
+
+    fn is_static(&self) -> bool {
+        true
+    }
 }
 
 #[cfg(test)]

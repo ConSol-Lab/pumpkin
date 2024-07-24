@@ -27,6 +27,7 @@ use crate::engine::variables::Literal;
 pub struct DynamicBrancher {
     branchers: Vec<Box<dyn Brancher>>,
     brancher_index: usize,
+    is_static: bool,
 }
 
 impl Debug for DynamicBrancher {
@@ -39,13 +40,16 @@ impl DynamicBrancher {
     /// Creates a new [`DynamicBrancher`] with the provided `branchers`. It will attempt to use the
     /// `branchers` in the order in which they were provided.
     pub fn new(branchers: Vec<Box<dyn Brancher>>) -> Self {
+        let is_static = branchers.iter().all(|brancher| brancher.is_static());
         Self {
             branchers,
             brancher_index: 0,
+            is_static,
         }
     }
 
     pub fn add_brancher(&mut self, brancher: Box<dyn Brancher>) {
+        self.is_static &= brancher.is_static();
         self.branchers.push(brancher)
     }
 }
@@ -103,5 +107,9 @@ impl Brancher for DynamicBrancher {
         self.branchers
             .iter_mut()
             .for_each(|brancher| brancher.on_solution(solution));
+    }
+
+    fn is_static(&self) -> bool {
+        self.is_static
     }
 }

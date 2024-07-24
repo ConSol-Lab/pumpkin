@@ -72,6 +72,10 @@ impl<TieBreaking: TieBreaker<DomainId, i32>> VariableSelector<DomainId>
             });
         self.tie_breaker.select()
     }
+
+    fn is_static(&self) -> bool {
+        true
+    }
 }
 
 #[cfg(test)]

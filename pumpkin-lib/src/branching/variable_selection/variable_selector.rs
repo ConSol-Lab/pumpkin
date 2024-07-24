@@ -36,4 +36,8 @@ pub trait VariableSelector<Var> {
 
     /// A function which is called when a variable appears in a conflict during conflict analysis.
     fn on_appearance_in_conflict_integer(&mut self, _variable: DomainId) {}
+
+    /// This method returns whether the [`VariableSelector`] is static throughout the search
+    /// process.
+    fn is_static(&self) -> bool;
 }
