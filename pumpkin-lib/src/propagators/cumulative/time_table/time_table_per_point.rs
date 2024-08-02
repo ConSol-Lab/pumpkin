@@ -20,7 +20,7 @@ use crate::engine::propagation::PropagatorConstructor;
 use crate::engine::propagation::PropagatorConstructorContext;
 use crate::engine::variables::IntegerVariable;
 use crate::predicates::PropositionalConjunction;
-use crate::propagators::util::create_propositional_conjunction;
+use crate::propagators::cumulative::time_table::propagation_handler::create_conflict_explanation;
 use crate::propagators::util::create_tasks;
 use crate::propagators::util::reset_bounds_clear_updated;
 use crate::propagators::util::update_bounds_task;
@@ -68,7 +68,7 @@ where
         TimeTablePerPointPropagator::new(CumulativeParameters::new(
             tasks,
             self.capacity,
-            self.allow_holes_in_domain,
+            self.options,
         ))
     }
 }
@@ -187,9 +187,10 @@ pub(crate) fn create_time_table_per_point_from_scratch<Var: IntegerVariable + 's
                 if current_profile.height > parameters.capacity {
                     // The addition of the current task to the resource profile has caused an
                     // overflow
-                    return Err(create_propositional_conjunction(
+                    return Err(create_conflict_explanation(
                         context,
-                        &current_profile.profile_tasks,
+                        current_profile,
+                        parameters.options.explanation_type,
                     ));
                 }
             }
@@ -225,6 +226,8 @@ mod tests {
     use crate::engine::test_helper::TestSolver;
     use crate::predicate;
     use crate::propagators::ArgTask;
+    use crate::propagators::CumulativeExplanationType;
+    use crate::propagators::CumulativeOptions;
     use crate::propagators::TimeTablePerPoint;
 
     #[test]
@@ -250,7 +253,11 @@ mod tests {
                 .into_iter()
                 .collect(),
                 1,
-                false,
+                CumulativeOptions {
+                    allow_holes_in_domain: false,
+                    explanation_type: CumulativeExplanationType::default(),
+                    generate_sequence: false,
+                },
             ))
             .expect("No conflict");
         assert_eq!(solver.lower_bound(s2), 5);
@@ -281,7 +288,11 @@ mod tests {
             .into_iter()
             .collect(),
             1,
-            false,
+            CumulativeOptions {
+                allow_holes_in_domain: false,
+                explanation_type: CumulativeExplanationType::Naive,
+                generate_sequence: false,
+            },
         ));
         assert!(match result {
             Err(Inconsistency::Other(ConflictInfo::Explanation(x))) => {
@@ -323,7 +334,11 @@ mod tests {
                 .into_iter()
                 .collect(),
                 1,
-                false,
+                CumulativeOptions {
+                    allow_holes_in_domain: false,
+                    explanation_type: CumulativeExplanationType::default(),
+                    generate_sequence: false,
+                },
             ))
             .expect("No conflict");
         assert_eq!(solver.lower_bound(s2), 0);
@@ -379,7 +394,11 @@ mod tests {
                 .into_iter()
                 .collect(),
                 5,
-                false,
+                CumulativeOptions {
+                    allow_holes_in_domain: false,
+                    explanation_type: CumulativeExplanationType::default(),
+                    generate_sequence: false,
+                },
             ))
             .expect("No conflict");
         assert_eq!(solver.lower_bound(f), 10);
@@ -408,7 +427,11 @@ mod tests {
                 .into_iter()
                 .collect(),
                 1,
-                false,
+                CumulativeOptions {
+                    allow_holes_in_domain: false,
+                    explanation_type: CumulativeExplanationType::default(),
+                    generate_sequence: false,
+                },
             ))
             .expect("No conflict");
         assert_eq!(solver.lower_bound(s2), 6);
@@ -452,7 +475,11 @@ mod tests {
                 .into_iter()
                 .collect(),
                 1,
-                false,
+                CumulativeOptions {
+                    allow_holes_in_domain: false,
+                    explanation_type: CumulativeExplanationType::Naive,
+                    generate_sequence: false,
+                },
             ))
             .expect("No conflict");
         let result = solver.propagate_until_fixed_point(&mut propagator);
@@ -467,7 +494,7 @@ mod tests {
             .clone();
         assert_eq!(
             PropositionalConjunction::from(vec![
-                predicate!(s2 <= 6),
+                predicate!(s2 <= 5),
                 predicate!(s1 >= 6),
                 predicate!(s1 <= 6),
             ]),
@@ -522,7 +549,11 @@ mod tests {
                 .into_iter()
                 .collect(),
                 5,
-                false,
+                CumulativeOptions {
+                    allow_holes_in_domain: false,
+                    explanation_type: CumulativeExplanationType::default(),
+                    generate_sequence: false,
+                },
             ))
             .expect("No conflict");
         assert_eq!(solver.lower_bound(a), 0);
@@ -601,7 +632,11 @@ mod tests {
                 .into_iter()
                 .collect(),
                 5,
-                false,
+                CumulativeOptions {
+                    allow_holes_in_domain: false,
+                    explanation_type: CumulativeExplanationType::default(),
+                    generate_sequence: false,
+                },
             ))
             .expect("No conflict");
         assert_eq!(solver.lower_bound(a), 0);
@@ -648,7 +683,11 @@ mod tests {
                 .into_iter()
                 .collect(),
                 1,
-                false,
+                CumulativeOptions {
+                    allow_holes_in_domain: false,
+                    explanation_type: CumulativeExplanationType::Naive,
+                    generate_sequence: false,
+                },
             ))
             .expect("No conflict");
         assert_eq!(solver.lower_bound(s2), 5);
@@ -661,7 +700,7 @@ mod tests {
             .clone();
         assert_eq!(
             PropositionalConjunction::from(vec![
-                predicate!(s2 >= 2),
+                predicate!(s2 >= 4),
                 predicate!(s1 >= 1),
                 predicate!(s1 <= 1), /* Note that this not the most general explanation, if s2
                                       * could have started at 0 then it would still have
@@ -700,7 +739,11 @@ mod tests {
                 .into_iter()
                 .collect(),
                 1,
-                false,
+                CumulativeOptions {
+                    allow_holes_in_domain: false,
+                    explanation_type: CumulativeExplanationType::Naive,
+                    generate_sequence: false,
+                },
             ))
             .expect("No conflict");
         assert_eq!(solver.lower_bound(s3), 7);
@@ -717,7 +760,7 @@ mod tests {
             PropositionalConjunction::from(vec![
                 predicate!(s2 <= 5),
                 predicate!(s2 >= 5),
-                predicate!(s3 >= 3), /* Note that s3 would have been able to propagate
+                predicate!(s3 >= 6), /* Note that s3 would have been able to propagate
                                       * this bound even if it started at time 0 */
             ]),
             reason
@@ -747,7 +790,11 @@ mod tests {
                 .into_iter()
                 .collect(),
                 1,
-                true,
+                CumulativeOptions {
+                    allow_holes_in_domain: true,
+                    explanation_type: CumulativeExplanationType::Naive,
+                    generate_sequence: false,
+                },
             ))
             .expect("No conflict");
         assert_eq!(solver.lower_bound(s2), 0);
