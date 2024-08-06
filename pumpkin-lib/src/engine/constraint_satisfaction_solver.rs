@@ -16,6 +16,7 @@ use super::clause_allocators::ClauseInterface;
 use super::conflict_analysis::AnalysisStep;
 use super::conflict_analysis::ConflictAnalysisResult;
 use super::conflict_analysis::ResolutionConflictAnalyser;
+use super::core::Core;
 use super::termination::TerminationCondition;
 use super::variables::IntegerVariable;
 use crate::basic_types::moving_averages::CumulativeMovingAverage;
@@ -602,7 +603,8 @@ impl ConstraintSatisfactionSolver {
         domain_id
     }
 
-    /// Returns an unsatisfiable core.
+    /// Returns an unsatisfiable core or an [`Err`] if the provided assumptions were conflicting
+    /// with one another ([`Err`] then contain the [`Literal`] which was conflicting).
     ///
     /// We define an unsatisfiable core as a clause containing only negated assumption literals,
     /// which is implied by the formula. Alternatively, it is the negation of a conjunction of
@@ -658,19 +660,18 @@ impl ConstraintSatisfactionSolver {
     ///         assert_eq!(
     ///             core.len(),
     ///             assumptions.len(),
-    ///             "the core has the length of the number of assumptions"
+    ///             "The core has the length of the number of assumptions"
     ///         );
     ///         assert!(
-    ///             core.iter().all(|&lit| assumptions.contains(&!lit)),
-    ///             "all literals in the core are negated assumptions"
+    ///             core.get_negated_assumption_literals()
+    ///                 .into_iter()
+    ///                 .all(|lit| assumptions.contains(&!lit)),
+    ///             "All literals in the core are negated assumptions"
     ///         );
     ///     }
     /// }
     /// ```
-    pub fn extract_clausal_core(
-        &mut self,
-        brancher: &mut impl Brancher,
-    ) -> Result<Vec<Literal>, Literal> {
+    pub fn extract_clausal_core(&mut self, brancher: &mut impl Brancher) -> Result<Core, Literal> {
         let mut conflict_analysis_context = ConflictAnalysisContext {
             assumptions: &self.assumptions,
             clausal_propagator: &self.clausal_propagator,
@@ -1735,6 +1736,7 @@ mod tests {
     use crate::engine::termination::indefinite::Indefinite;
     use crate::engine::variables::DomainId;
     use crate::engine::variables::Literal;
+    use crate::engine::Core;
     use crate::engine::DomainEvents;
     use crate::predicate;
 
@@ -1870,10 +1872,7 @@ mod tests {
         core1.len() == core2.len() && core2.iter().all(|lit| core1.contains(lit))
     }
 
-    fn is_result_the_same(
-        res1: &Result<Vec<Literal>, Literal>,
-        res2: &Result<Vec<Literal>, Literal>,
-    ) -> bool {
+    fn is_result_the_same(res1: &Result<Core, Literal>, res2: &Result<Core, Literal>) -> bool {
         // if the two results disagree on the outcome, can already return false
         if res1.is_err() && res2.is_ok() || res1.is_ok() && res2.is_err() {
             println!("diff");
@@ -1889,7 +1888,10 @@ mod tests {
         // otherwise the two results are both ok
         else {
             println!("ok");
-            is_same_core(&res1.clone().unwrap(), &res2.clone().unwrap())
+            is_same_core(
+                &res1.clone().unwrap().get_core(),
+                &res2.clone().unwrap().get_core(),
+            )
         }
     }
 
@@ -1897,7 +1899,7 @@ mod tests {
         mut solver: ConstraintSatisfactionSolver,
         assumptions: Vec<Literal>,
         expected_flag: CSPSolverExecutionFlag,
-        expected_result: Result<Vec<Literal>, Literal>,
+        expected_result: Result<Core, Literal>,
     ) {
         let mut brancher = solver.default_brancher_over_all_propositional_variables();
         let flag = solver.solve_under_assumptions(&assumptions, &mut Indefinite, &mut brancher);
@@ -1988,13 +1990,31 @@ mod tests {
     }
 
     #[test]
+    fn core_extraction_unit_core() {
+        let mut solver = ConstraintSatisfactionSolver::default();
+        let lit1 = Literal::new(solver.create_new_propositional_variable(None), true);
+        let _ = solver.add_clause(vec![lit1]);
+
+        run_test(
+            solver,
+            vec![!lit1],
+            CSPSolverExecutionFlag::Infeasible,
+            Ok(Core::RootLevel {
+                root_level_assumption_literal: !lit1,
+            }),
+        )
+    }
+
+    #[test]
     fn simple_core_extraction_1_1() {
         let (solver, lits) = create_instance1();
         run_test(
             solver,
             vec![!lits[0], !lits[1]],
             CSPSolverExecutionFlag::Infeasible,
-            Ok(vec![!lits[0]]),
+            Ok(Core::RootLevel {
+                root_level_assumption_literal: !lits[0],
+            }),
         )
     }
 
@@ -2005,7 +2025,9 @@ mod tests {
             solver,
             vec![!lits[1], !lits[0]],
             CSPSolverExecutionFlag::Infeasible,
-            Ok(vec![!lits[1]]),
+            Ok(Core::RootLevel {
+                root_level_assumption_literal: !lits[1],
+            }),
         );
     }
 
@@ -2017,7 +2039,7 @@ mod tests {
             solver,
             vec![!lits[1], !lits[0]],
             CSPSolverExecutionFlag::Infeasible,
-            Ok(vec![]),
+            Ok(Core::Empty),
         );
     }
 
@@ -2028,7 +2050,9 @@ mod tests {
             solver,
             vec![!lits[1], lits[1]],
             CSPSolverExecutionFlag::Infeasible,
-            Ok(vec![!lits[1]]), // the core gets computed before inconsistency is detected
+            Ok(Core::Standard {
+                negated_assumption_literals: vec![lits[1]],
+            }), // The core gets computed before inconsistency is detected
         );
     }
 
@@ -2050,7 +2074,9 @@ mod tests {
             solver,
             vec![!lits[0], lits[1], !lits[2]],
             CSPSolverExecutionFlag::Infeasible,
-            Ok(vec![lits[0], !lits[1], lits[2]]),
+            Ok(Core::Standard {
+                negated_assumption_literals: vec![lits[0], !lits[1], lits[2]],
+            }),
         );
     }
 
@@ -2061,9 +2087,11 @@ mod tests {
             solver,
             vec![!lits[0], lits[1], !lits[2], lits[0]],
             CSPSolverExecutionFlag::Infeasible,
-            Ok(vec![lits[0], !lits[1], lits[2]]), /* could return inconsistent assumptions,
-                                                   * however inconsistency will not be detected
-                                                   * given the order of the assumptions */
+            Ok(Core::Standard {
+                negated_assumption_literals: vec![lits[0], !lits[1], lits[2]],
+            }), /* could return inconsistent assumptions,
+                 * however inconsistency will not be detected
+                 * given the order of the assumptions */
         );
     }
 
@@ -2094,7 +2122,9 @@ mod tests {
             solver,
             vec![!lits[0], !lits[1], !lits[2]],
             CSPSolverExecutionFlag::Infeasible,
-            Ok(vec![lits[0], lits[1], lits[2]]),
+            Ok(Core::Standard {
+                negated_assumption_literals: vec![lits[0], lits[1], lits[2]],
+            }),
         );
     }
 
@@ -2105,7 +2135,7 @@ mod tests {
             solver,
             vec![!lits[0], !lits[1]],
             CSPSolverExecutionFlag::Feasible,
-            Ok(vec![]), // will be ignored in the test
+            Ok(Core::Empty), // will be ignored in the test
         );
     }
 
