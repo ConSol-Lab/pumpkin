@@ -123,7 +123,7 @@ impl SemanticMinimiser {
         for domain_id in self.present_ids.iter() {
             // As soon as one domain is inconsistent, we know that we can stop
             if self.domains[domain_id].inconsistent {
-                return vec![assignments_propositional.true_literal];
+                panic!("It should not be possible to find an inconsistent domain during clause minimisation!");
             }
 
             // Then we add the predicates which describe the current domain; note that this removes
